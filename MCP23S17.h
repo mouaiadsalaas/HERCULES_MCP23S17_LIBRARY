@@ -110,7 +110,7 @@ uint8_t spiWriteRead( uint16_t txdata);
 void wordWrite(uint8_t reg, unsigned int word);
 void byteWrite(uint8_t reg, uint8_t value);
 
-void MCP_Init(void);
+void MCP_Init(uint8_t SPI_PORT_NO, uint8_t CS);
 
 void PortMode(unsigned int mode);
 void MCP_PortpullupMode(unsigned int mode);

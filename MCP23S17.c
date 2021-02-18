@@ -26,25 +26,58 @@ uint32_t _modeCache   = 0xFFFF;                // Default I/O mode is all input,
 uint32_t _outputCache = 0x0000;                // Default output state is all off, 0x0000
 uint32_t _pullupCache = 0x0000;                // Default pull-up state is all off, 0x0000
 uint32_t _invertCache = 0x0000;                // Default input inversion state is not inverted, 0x0000
+
+uint8_t CS_PIN=0;
+uint8_t SPI_PORT_NUMBER=0;
 /*************************************************************
  * Function Definitions
 
 **************************************************************/
 void spiWrite( uint16_t data ){
-    spiTransmitData(spiREG3, &dataconfig1_t, 1, &data);
+    switch (SPI_PORT_NUMBER) {
+        case 1:
+            spiTransmitData(spiREG1, &dataconfig1_t, 1, &data);
+            break;
+
+        case 2:
+            spiTransmitData(spiREG2, &dataconfig1_t, 1, &data);
+            break;
+
+        case 3:
+            spiTransmitData(spiREG3, &dataconfig1_t, 1, &data);
+            break;
+
+        default:
+            break;
+    }
 }
 
 uint8_t spiWriteRead( uint16_t txdata){
     uint16_t rxdata;
-    spiTransmitAndReceiveData(spiREG3, &dataconfig1_t, 1,&txdata, &rxdata);
+    switch (SPI_PORT_NUMBER) {
+        case 1:
+            spiTransmitAndReceiveData(spiREG1, &dataconfig1_t, 1,&txdata, &rxdata);
+            break;
+
+        case 2:
+            spiTransmitAndReceiveData(spiREG2, &dataconfig1_t, 1,&txdata, &rxdata);
+            break;
+
+        case 3:
+            spiTransmitAndReceiveData(spiREG3, &dataconfig1_t, 1,&txdata, &rxdata);
+            break;
+
+        default:
+            break;
+    }
     return (uint8_t)rxdata;
 }
 
 // GENERIC WORD WRITE - will write a word to a register pair, LSB to first register, MSB to next higher value register
 void wordWrite(uint8_t reg, unsigned int word) {  // Accept the start register and word
 
-    gioSetBit(BTT1_IN1_PORT, BTT1_IN1_PIN, HIGH);
-    gioSetBit(BTT1_IN1_PORT, BTT1_IN1_PIN, LOW);
+    gioSetBit(SPI_CS_PORT, 0, HIGH);
+    gioSetBit(SPI_CS_PORT, 0, LOW);
 
     spiWrite(ADDR_OPCODEW);
 
@@ -53,20 +86,20 @@ void wordWrite(uint8_t reg, unsigned int word) {  // Accept the start register a
     spiWrite((uint8_t) (word));
     spiWrite((uint8_t) (word >> 8));
 
-    gioSetBit(BTT1_IN1_PORT, BTT1_IN1_PIN, HIGH);
+    gioSetBit(SPI_CS_PORT, SPI_CS_PIN, HIGH);
 }
 
 // GENERIC BYTE WRITE - will write a byte to a register, arguments are register address and the value to write
 void byteWrite(uint8_t reg, uint8_t value) {
 
-    gioSetBit(BTT1_IN1_PORT, BTT1_IN1_PIN, HIGH);
-    gioSetBit(BTT1_IN1_PORT, BTT1_IN1_PIN, LOW);
+    gioSetBit(SPI_CS_PORT, 0, HIGH);
+    gioSetBit(SPI_CS_PORT, 0, LOW);
 
     spiWrite(ADDR_OPCODEW);
     spiWrite(reg);
     spiWrite(value);
 
-    gioSetBit(BTT1_IN1_PORT, BTT1_IN1_PIN, HIGH);
+    gioSetBit(SPI_CS_PORT, 0, HIGH);
 }
 
 // MODE SETTING FUNCTION - BY Port
@@ -114,13 +147,13 @@ void MCP_PortinputInvert(unsigned int mode) {
 unsigned int MCP_PortRead(void) {
   unsigned int value = 0;                   // Initialize a variable to hold the read values to be returned
 
-  gioSetBit(BTT1_IN1_PORT, BTT1_IN1_PIN, LOW);
+  gioSetBit(SPI_CS_PORT, 0, LOW);
   spiWrite(ADDR_OPCODER);
   spiWrite(GPIOA);
   value=spiWriteRead(0x00);
   value |= (spiWriteRead(0x00) << 8);
 
-  gioSetBit(BTT1_IN1_PORT, BTT1_IN1_PIN, HIGH);
+  gioSetBit(SPI_CS_PORT, 0, HIGH);
   return value;
 }
 
@@ -129,6 +162,11 @@ uint8_t MCP_pinRead(uint8_t pin) {                    // Return a single bit val
     return MCP_PortRead() & (1 << (pin - 1)) ? HIGH : LOW;  // Call the word reading function, extract HIGH/LOW information from the requested pin
 }
 
-void MCP_Init(void) {                           // function to set Configurations to MCP23x17 Configuration Register
-byteWrite(IOCON, ADDR_ENABLE);                  // Configuration register for MCP23S17, the only thing we change is enabling hardware addressing
+void MCP_Init(uint8_t SPI_PORT_NO, uint8_t CS) {                           // function to set Configurations to MCP23x17 Configuration Register
+
+    byteWrite(IOCON, ADDR_ENABLE);                  // Configuration register for MCP23S17, the only thing we change is enabling hardware addressing
+    CS_PIN=CS;
+    SPI_PORT_NUMBER=SPI_PORT_NO;
+
 }
+
